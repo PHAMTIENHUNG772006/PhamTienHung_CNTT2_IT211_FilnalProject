@@ -5,11 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
@@ -43,6 +46,35 @@ public class GlobalExceptionHandler {
                 .body(buildError(500, "SERVER_ERROR", "Internal Server Error: " + ex.getMessage(), request));
     }
 
+    @ExceptionHandler(NoCompanyNameException.class)
+    public ResponseEntity<ErrorResponse> noCompanyName(
+            NoCompanyNameException ex,
+            HttpServletRequest request
+    ) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(
+                        buildError(
+                                400,
+                                "Validation Error",
+                                ex.getMessage(),
+                                request
+                        )
+                );
+    }
+
+    @ExceptionHandler({DisabledException.class, LockedException.class})
+    public ResponseEntity<?> handleAccountDisabledException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN) // Trả về mã 403 chuẩn bảo mật
+                .body(Map.of(
+                        "status", HttpStatus.FORBIDDEN.value(),
+                        "error", "ACCOUNT_DISABLED",
+                        "message", "Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt!",
+                        "path", "/api/v1/auth/login"
+                ));
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> conflict(
             ConflictException ex,
@@ -60,6 +92,8 @@ public class GlobalExceptionHandler {
                         )
                 );
     }
+
+
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> badCredentials(

@@ -27,14 +27,11 @@ public class RegisterRequest {
     @Email(message = "Email không đúng định dạng")
     private String email;
 
-    @Pattern(
-            regexp = "^(0|\\+84)[0-9]{9,10}$",
-            message = "Số điện thoại không hợp lệ"
-    )
+    @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$", message = "Số điện thoại không hợp lệ")
     private String phone;
-
-    private Long companyId;
 
     @NotNull(message = "Loại tài khoản không được để trống")
     private RegisterType registerType;
+
+    private String companyName;
 }

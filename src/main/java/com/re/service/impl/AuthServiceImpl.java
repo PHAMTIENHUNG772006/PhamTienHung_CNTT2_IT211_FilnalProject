@@ -1,6 +1,7 @@
 package com.re.service.impl;
 
 import com.re.exceptions.ConflictException;
+import com.re.exceptions.NoCompanyNameException;
 import com.re.exceptions.NotFountUserException;
 import com.re.model.dto.auth.AuthResponse;
 import com.re.model.dto.auth.UserResponse;
@@ -9,7 +10,6 @@ import com.re.model.dto.auth.RefreshTokenRequest;
 import com.re.model.dto.auth.RegisterRequest;
 import com.re.model.entity.*;
 import com.re.model.entity.enums.RegisterType;
-import com.re.model.entity.enums.UserStatus;
 import com.re.repository.*;
 import com.re.security.jwt.JWTProvider;
 import com.re.service.AuthService;
@@ -42,53 +42,47 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserResponse register(RegisterRequest request) {
-   
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email đã tồn tại");
         }
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ConflictException("Username đã tồn tại");
-        }
 
-        Company existingCompany = null;
-
-        //  2. KIỂM TRA ĐỘC QUYỀN 1-1 CHO EMPLOYER
+        //  2. VALIDATE RIÊNG CHO EMPLOYER: Bắt buộc nhập tên công ty
         if (request.getRegisterType() == RegisterType.EMPLOYER) {
-
-            // Điều kiện 1: Bắt buộc phải nhập ID công ty
-            if (request.getCompanyId() == null) {
-                throw new ConflictException("Tài khoản nhà tuyển dụng bắt buộc phải nhập ID công ty!");
-            }
-
-            // Điều kiện 2: Kiểm tra công ty có tồn tại sẵn trong DB không
-            existingCompany = companyRepository.findById(request.getCompanyId())
-                    .orElseThrow(() -> new ConflictException("Không tìm thấy công ty có ID bằng " + request.getCompanyId() + " trên hệ thống!"));
-
-            // Điều kiện 3: Kiểm tra xem công ty này đã có nhân viên/chủ sở hữu khác nhận chưa
-            if (userRepository.existsByCompany(existingCompany)) {
-                throw new ConflictException("Công ty '" + existingCompany.getName() + "' đã có nhân viên khác đăng ký quản lý! Một công ty chỉ cho phép duy nhất một nhân viên.");
+            if (request.getCompanyName() == null || request.getCompanyName().trim().isEmpty()) {
+                throw new NoCompanyNameException("Tài khoản nhà tuyển dụng bắt buộc phải nhập tên công ty!");
             }
         }
 
-        // 3. Tìm kiếm vai trò hệ thống
+        // 3. Tìm kiếm quyền cấu hình hệ thống
         Role role = roleRepository
                 .findByRoleName(request.getRegisterType() == RegisterType.EMPLOYER ? "ROLE_EMPLOYER" : "ROLE_CANDIDATE")
                 .orElseThrow(() -> new RuntimeException("Vai trò không tồn tại trên hệ thống"));
 
-        // 4. Khởi tạo đối tượng User gắn liên kết 1-1 duy nhất
+        // 4. Khởi tạo đối tượng User
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .status(UserStatus.ACTIVE)
+                .isActive(true)
                 .role(role)
-                .company(existingCompany) // Gán thực thể công ty độc quyền
                 .build();
 
-        // 5. Lưu xuống cơ sở dữ liệu
+
         user = userRepository.save(user);
+
+        // 5. NẾU LÀ EMPLOYER: Tiến hành khởi tạo và lưu luôn thực thể Company mẫu
+        if (request.getRegisterType() == RegisterType.EMPLOYER) {
+
+            Company newCompany = Company.builder()
+                    .name(request.getCompanyName().trim())
+                    .description("Chưa có mô tả công ty.")
+                    .owner(user)
+                    .build();
+
+            companyRepository.save(newCompany);
+        }
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -114,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new NotFountUserException("Không tìm thấy người dùng"));
 
-        if (user.getStatus() == UserStatus.INACTIVE) {
+        if (user.getIsActive() == true) {
             throw new RuntimeException("Tài khoản đã bị khóa");
         }
 
@@ -190,11 +184,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(String accessToken, String username) {
-        // SỬA TẠI ĐÂY: Tìm kiếm theo đúng trường username nhận từ Spring Security
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFountUserException("Không tìm thấy người dùng: " + username));
 
-        // Xóa refresh token cũ của user
         refreshTokenRepository.deleteByUser(user);
 
         // Đưa access token vào blacklist

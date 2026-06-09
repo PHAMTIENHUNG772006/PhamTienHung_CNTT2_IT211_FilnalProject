@@ -1,7 +1,7 @@
 package com.re.model.entity;
 
 
-import com.re.model.entity.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -38,13 +38,13 @@ public class User {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "user_status", nullable = false, length = 30)
-    private UserStatus status;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive;
 
     @OneToOne(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties("owner")
     private Company company;
-
 
     @OneToMany(mappedBy = "candidate", fetch = FetchType.LAZY)
     private List<Application> applications;

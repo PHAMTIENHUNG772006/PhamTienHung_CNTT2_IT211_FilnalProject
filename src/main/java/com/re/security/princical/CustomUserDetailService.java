@@ -1,6 +1,5 @@
 package com.re.security.princical;
 
-import com.re.exceptions.NotFountUserException;
 import com.re.model.entity.User;
 import com.re.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +33,7 @@ public class CustomUserDetailService implements UserDetailsService {
                 .id(user.getId())
                 .username(user.getUsername())
                 .password(user.getPassword())
-                .status(user.getStatus())
+                .isActive(user.getIsActive())
                 .authorities(Collections.singletonList(new SimpleGrantedAuthority(roleName)))
                 .build();
     }

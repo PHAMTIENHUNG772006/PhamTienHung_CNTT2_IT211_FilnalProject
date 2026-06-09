@@ -7,5 +7,6 @@ import org.springframework.stereotype.Component;
 @Aspect
 @Component
 @Order(1)
-public class LogginAspect {
+public class LoggingAspect {
+
 }

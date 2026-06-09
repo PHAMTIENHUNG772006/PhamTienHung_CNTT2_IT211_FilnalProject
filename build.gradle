@@ -44,8 +44,11 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 
 
-    //Testing
+    // Thư viện Cloudinary cốt lõi hỗ trợ HTTP Client mới nhất
+    implementation 'com.cloudinary:cloudinary-http5:2.0.0'
 
+    // Thư viện lưu BlackList Token
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
 }
 

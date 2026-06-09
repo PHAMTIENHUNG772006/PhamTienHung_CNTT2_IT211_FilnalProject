@@ -31,7 +31,7 @@ public class Application {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private ApplicationStatus status = ApplicationStatus.PENDING;
+    private ApplicationStatus status ;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false)
