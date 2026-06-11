@@ -1,14 +1,15 @@
 package com.re.service.impl;
 
+import com.re.exceptions.BadRequestException;
+import com.re.exceptions.ForbiddenException;
+import com.re.exceptions.ResourceNotFoundException;
+import com.re.exceptions.UnauthorizedException;
 import com.re.exceptions.ConflictException;
-import com.re.exceptions.NoCompanyNameException;
-import com.re.exceptions.NotFountUserException;
 import com.re.model.dto.auth.*;
 import com.re.model.entity.*;
 import com.re.model.entity.enums.RegisterType;
 import com.re.repository.*;
 import com.re.security.jwt.JWTProvider;
-import com.re.security.princical.CustomUserDetails;
 import com.re.service.AuthService;
 import com.re.service.RedisService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,27 +41,30 @@ public class AuthServiceImpl implements AuthService {
     private final CompanyRepository companyRepository;
     private final RedisService redisService;
 
-    // UC-02 & FR-04: Đăng ký tài khoản người dùng với Role Entity kết nối bảng dữ liệu khóa ngoại
+    // ========================= REGISTER =========================
     @Override
     @Transactional
     public UserResponse register(RegisterRequest request) {
+
+        // 1. Kiểm tra trùng lặp Email (409 Conflict)
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email đã tồn tại");
         }
 
-        //  2. VALIDATE RIÊNG CHO EMPLOYER: Bắt buộc nhập tên công ty
+        // 2. Thay đổi sang BadRequestException (400 Bad Request) khi thiếu tên công ty đối với Employer
         if (request.getRegisterType() == RegisterType.EMPLOYER) {
             if (request.getCompanyName() == null || request.getCompanyName().trim().isEmpty()) {
-                throw new NoCompanyNameException("Tài khoản nhà tuyển dụng bắt buộc phải nhập tên công ty!");
+                throw new BadRequestException("Tên công ty không được để trống");
             }
         }
 
-        // 3. Tìm kiếm quyền cấu hình hệ thống
-        Role role = roleRepository
-                .findByRoleName(request.getRegisterType() == RegisterType.EMPLOYER ? "ROLE_EMPLOYER" : "ROLE_CANDIDATE")
-                .orElseThrow(() -> new RuntimeException("Vai trò không tồn tại trên hệ thống"));
+        // 3. Thay đổi sang ResourceNotFoundException (404 Not Found) cho vai trò người dùng
+        Role role = roleRepository.findByRoleName(
+                        request.getRegisterType() == RegisterType.EMPLOYER
+                                ? "ROLE_EMPLOYER"
+                                : "ROLE_CANDIDATE")
+                .orElseThrow(() -> new ResourceNotFoundException("Role không tồn tại"));
 
-        // 4. Khởi tạo đối tượng User
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -71,19 +75,16 @@ public class AuthServiceImpl implements AuthService {
                 .role(role)
                 .build();
 
-
         user = userRepository.save(user);
 
-        // 5. NẾU LÀ EMPLOYER: Tiến hành khởi tạo và lưu luôn thực thể Company mẫu
         if (request.getRegisterType() == RegisterType.EMPLOYER) {
-
-            Company newCompany = Company.builder()
+            Company company = Company.builder()
                     .name(request.getCompanyName().trim())
                     .description("Chưa có mô tả công ty.")
                     .owner(user)
                     .build();
 
-            companyRepository.save(newCompany);
+            companyRepository.save(company);
         }
 
         return UserResponse.builder()
@@ -96,22 +97,25 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // UC-01 & FR-01: Xác thực thông tin đăng nhập, xóa phiên token cũ và cấp phát cặp chuỗi JWT mới
+    // ========================= LOGIN =========================
     @Override
     @Transactional
-    public AuthResponse login(LoginRequest loginRequest) {
+    public AuthResponse login(LoginRequest request) {
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
+                        request.getUsername(),
+                        request.getPassword()
                 )
         );
 
-        User user = userRepository.findByUsername(loginRequest.getUsername())
-                .orElseThrow(() -> new NotFountUserException("Không tìm thấy người dùng"));
+        // 4. Sửa đổi sang ResourceNotFoundException (404 Not Found)
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
+        // 5. Thay đổi sang ForbiddenException (403 Forbidden) cho tài khoản bị khóa
         if (!user.getIsActive()) {
-            throw new RuntimeException("Tài khoản đã bị khóa");
+            throw new ForbiddenException("Tài khoản đã bị khóa");
         }
 
         refreshTokenRepository.deleteByUserId(user.getId());
@@ -135,45 +139,51 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    // FR-02: Cơ chế xoay vòng Token (Token Rotation) - Đổi chuỗi Refresh Token hợp lệ lấy cặp Token mới
+    // ========================= REFRESH TOKEN =========================
     @Override
     @Transactional
     public AuthResponse refreshToken(RefreshTokenRequest request) {
+
         String refreshToken = request.getRefreshToken();
 
+        // 6. Thay đổi sang BadRequestException (400 Bad Request)
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new RuntimeException("Refresh token không được để trống");
+            throw new BadRequestException("Refresh token không được để trống");
         }
 
         jwtProvider.validateToken(refreshToken);
 
+        // 7. Thay đổi sang ResourceNotFoundException (404 Not Found)
         RefreshToken tokenEntity = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Refresh token không tồn tại"));
 
         if (Boolean.TRUE.equals(tokenEntity.getRevoked())) {
-            throw new RuntimeException("Refresh token đã bị thu hồi");
+            throw new ConflictException("Refresh token đã bị thu hồi");
         }
 
+        // 8. Thay đổi sang UnauthorizedException (401 Unauthorized) khi token hết hạn
         if (tokenEntity.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Refresh token đã hết hạn");
+            throw new UnauthorizedException("Refresh token đã hết hạn");
         }
 
         String username = jwtProvider.getUsernameFromToken(refreshToken);
 
         User user = tokenEntity.getUser();
-        refreshTokenRepository.delete(tokenEntity);
+
+        tokenEntity.setRevoked(true);
+        refreshTokenRepository.save(tokenEntity);
 
         String newAccessToken = jwtProvider.generateAccessToken(username);
         String newRefreshToken = jwtProvider.generateRefreshToken(username);
 
-        RefreshToken newRefreshTokenEntity = RefreshToken.builder()
+        RefreshToken newToken = RefreshToken.builder()
                 .token(newRefreshToken)
                 .user(user)
                 .revoked(false)
                 .expiryDate(LocalDateTime.now().plusDays(7))
                 .build();
 
-        refreshTokenRepository.save(newRefreshTokenEntity);
+        refreshTokenRepository.save(newToken);
 
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
@@ -182,98 +192,89 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    // ========================= LOGOUT =========================
     @Override
     @Transactional
     public void logout(HttpServletRequest request) {
+
         String authHeader = request.getHeader("Authorization");
+
+        // 9. Thay đổi sang BadRequestException (400 Bad Request)
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Token không hợp lệ hoặc không tồn tại");
+            throw new BadRequestException("Token không hợp lệ");
         }
 
         String token = authHeader.substring(7);
-        String username = null;
+        String username;
 
-        // === PHẦN 1: ĐƯA ACCESS TOKEN VÀO REDIS BLACKLIST ===
         try {
-            // Lấy username trực tiếp từ token để dùng cho phần 2
             username = jwtProvider.extractUsername(token);
 
-            Date expirationDate = jwtProvider.getExpirationDateFromToken(token);
-            long remainingTime = expirationDate.getTime() - System.currentTimeMillis();
+            Date expiry = jwtProvider.getExpirationDateFromToken(token);
+            long remainingTime = expiry.getTime() - System.currentTimeMillis();
 
             if (remainingTime > 0) {
                 redisService.saveToBlacklist(token, remainingTime);
-                log.info("Đã đưa Access Token của user [{}] vào Redis Blacklist", username);
             }
+
         } catch (Exception e) {
-            log.warn("Token đã hết hạn hoặc không hợp lệ trước khi logout: {}", e.getMessage());
+            log.warn("Token invalid: {}", e.getMessage());
+            username = null;
         }
 
-        // === PHẦN 2: XÓA REFRESH TOKEN THEO USERNAME ===
-        try {
-            // Nếu không lấy được username từ token (do quá hạn), thử lấy từ SecurityContext
-            if (username == null) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
-                    username = authentication.getName();
-                }
-            }
+        if (username == null) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            username = (auth != null) ? auth.getName() : null;
+        }
 
-            if (username != null) {
-                // Tìm User dựa trên tên đăng nhập
-                User user = userRepository.findByUsername(username)
-                        .orElseThrow(() -> new NotFountUserException("Không tìm thấy người dùng khi logout"));
+        if (username != null) {
+            // 10. Thay đổi sang ResourceNotFoundException (404 Not Found)
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
-                // Xóa toàn bộ phiên làm việc của user này
-                refreshTokenRepository.deleteByUserId(user.getId());
-                log.info("Đã xóa toàn bộ phiên làm việc Refresh Token của User: {}", username);
-            } else {
-                log.warn("Không thể xác định danh tính người dùng để xóa Refresh Token");
-            }
-        } catch (Exception e) {
-            log.error("Lỗi nghiêm trọng khi xử lý xóa phiên Refresh Token: {}", e.getMessage());
+            refreshTokenRepository.deleteByUserId(user.getId());
         }
     }
 
-
-    // Thay đổi từ void thành String để trả OTP trực tiếp ra ngoài
+    // ========================= FORGOT PASSWORD =========================
     @Override
     public String forgotPassword(String email) {
 
+        // 11. Thay đổi sang ResourceNotFoundException (404 Not Found)
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email này chưa được đăng ký trong hệ thống!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Email chưa được đăng ký"));
 
-        // 2. Tạo mã OTP ngẫu nhiên gồm 6 chữ số
         String otp = String.format("%06d", new Random().nextInt(999999));
 
         redisService.saveOtp(email, otp);
 
-        log.info("Khách hàng {} yêu cầu OTP khôi phục mật khẩu. Mã OTP sinh ra: {}", email, otp);
+        log.info("OTP generated for {}: {}", email, otp);
 
         return otp;
     }
 
+    // ========================= RESET PASSWORD =========================
     @Override
     public void resetPassword(ResetPasswordRequest request) {
-        // 1. Lấy OTP từ Redis ra kiểm tra
+
         String savedOtp = redisService.getOtp(request.getEmail());
 
+        // 12. Thay đổi sang BadRequestException (400 Bad Request) khi OTP hết hạn hoặc sai
         if (savedOtp == null) {
-            throw new RuntimeException("Mã OTP đã hết hạn hoặc không tồn tại!");
+            throw new BadRequestException("OTP đã hết hạn hoặc không tồn tại");
         }
 
         if (!savedOtp.equals(request.getOtp())) {
-            throw new RuntimeException("Mã OTP nhập vào không chính xác!");
+            throw new BadRequestException("OTP không chính xác");
         }
 
-        // 2. OTP đúng -> Tìm User và cập nhật mật khẩu mới
+        // 13. Thay đổi sang ResourceNotFoundException (404 Not Found)
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại."));
+                .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        // 3. Xóa OTP cũ trong Redis đi sau khi đổi thành công
         redisService.deleteOtp(request.getEmail());
     }
 }

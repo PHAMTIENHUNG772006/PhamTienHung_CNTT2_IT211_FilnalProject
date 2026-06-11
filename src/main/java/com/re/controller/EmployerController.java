@@ -4,13 +4,18 @@ import com.re.model.dto.jobs.JobRequest;
 import com.re.model.dto.response.ApiDataResponse;
 import com.re.model.entity.Application;
 import com.re.model.entity.Job;
-import com.re.model.entity.enums.JobStatus;
+import com.re.model.entity.enums.ApplicationStatus;
+import com.re.security.princical.CustomUserDetails;
 import com.re.service.ApplicationService;
 import com.re.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -22,6 +27,35 @@ public class EmployerController {
 
     private final JobService jobService;
     private final ApplicationService applicationService;
+
+
+    @GetMapping("/jobs")
+    public ResponseEntity<ApiDataResponse<Page<Job>>> getAllJobs(
+            @RequestParam(name = "page", defaultValue = "1") Integer page,
+            @RequestParam(name = "size", defaultValue = "10") Integer size
+    ) {
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        CustomUserDetails userDetails =
+                (CustomUserDetails) SecurityContextHolder.getContext()
+                        .getAuthentication()
+                        .getPrincipal();
+
+        Long employerId = userDetails.getId();
+
+        Page<Job> jobs = jobService.getAllJobsByEmployer(employerId, pageable);
+
+        ApiDataResponse<Page<Job>> response = new ApiDataResponse<>(
+                true,
+                "Lấy danh sách job thành công",
+                jobs,
+                null,
+                HttpStatus.OK
+        );
+
+        return ResponseEntity.ok(response);
+    }
 
     // API tạo mới Bài tuyển dụng
     @PostMapping("/createJob")
@@ -62,17 +96,17 @@ public class EmployerController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<ApiDataResponse<Job>> updateJobStatus(
+    @PutMapping("/applications/{id}/status")
+    public ResponseEntity<ApiDataResponse<Application>> updateJobStatus(
             @PathVariable Long id,
-            @RequestParam JobStatus status) {
+            @RequestParam ApplicationStatus status) {
 
-        Job updatedJob = jobService.updateStatus(id, status);
+        Application application = applicationService.updateStatus(id, status);
 
-        ApiDataResponse<Job> response = new ApiDataResponse<>(
+        ApiDataResponse<Application> response = new ApiDataResponse<>(
                 true,
-                "Tạo bài đăng tuyển dụng thành công!",
-                updatedJob,
+                "Cập nhật trạng thái dự án thành công!",
+                application,
                 null,
                 HttpStatus.OK
         );

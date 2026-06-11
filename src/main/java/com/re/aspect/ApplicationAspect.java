@@ -1,20 +1,24 @@
 package com.re.aspect;
 
-import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
-import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+
+
+import lombok.extern.slf4j.Slf4j;
+import org.aspectj.lang.annotation.Aspect;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@Order(1)
 @Slf4j
-public class LoggingAspect {
+public class ApplicationAspect {
 
 
-    @Pointcut("execution(* com.re.controller..*.*(..)) || execution(* com.re.service.impl..*.*(..))")
+
+    @Pointcut("execution(* com.re.service.impl..*.*(..))")
     public void logAll() {
 
     }
@@ -47,5 +51,4 @@ public class LoggingAspect {
 
         return result;
     }
-
 }

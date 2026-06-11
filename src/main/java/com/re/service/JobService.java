@@ -22,5 +22,8 @@ public interface JobService {
 
     Job closeJob(Long id);
 
-    Page<Job> getAllJobs(Pageable pageable);
+    Page<Job> getAllJobsByEmployer(Long employerId, Pageable pageable);
+
+    Page<Job> getAllJobsForCandidate(Pageable pageable);
+
 }

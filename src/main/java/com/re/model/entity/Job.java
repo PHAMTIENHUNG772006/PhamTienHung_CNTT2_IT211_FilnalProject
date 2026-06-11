@@ -1,5 +1,6 @@
 package com.re.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.re.model.entity.enums.JobStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,5 +36,6 @@ public class Job {
     private Company company;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"job"})
     private List<Application> applications;
 }

@@ -9,7 +9,10 @@ import com.re.service.JobService;
 import com.re.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +46,21 @@ public class AdminController {
         ),HttpStatus.OK);
     }
 
+
+    @GetMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiDataResponse<Page<UserResponse>>> getUser(
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+
+        Page<UserResponse> userAll = userService.getAllUser(pageable);
+
+        return ResponseEntity.ok(
+                new ApiDataResponse<>(true, "Lấy tất cả tài khoản có phân trang", userAll, null, HttpStatus.OK)
+        );
+    }
+
     @PutMapping("/users/{id}/lockUser")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<UserResponse>> updateJobLock(@PathVariable("id") Long userId){
@@ -60,7 +78,8 @@ public class AdminController {
 
 
     @PostMapping("/createUser")
-    public ResponseEntity<ApiDataResponse<UserResponse>> register(
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiDataResponse<UserResponse>> createUser(
             @Valid @RequestBody RegisterRequest request
     ) {
 

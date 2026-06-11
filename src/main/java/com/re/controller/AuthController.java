@@ -67,7 +67,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiDataResponse<AuthResponse>> refresh(@RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<ApiDataResponse<AuthResponse>> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(
@@ -125,12 +125,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
-
-
-
-
-
 
 
 }

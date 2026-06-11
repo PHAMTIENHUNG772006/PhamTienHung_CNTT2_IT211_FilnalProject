@@ -28,7 +28,7 @@ public class Company {
     @JsonIgnoreProperties("company")
     private User owner;
 
-    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties("company")
+    @OneToMany(mappedBy = "company")
+    @JsonIgnoreProperties({"company", "applications"})
     private List<Job> jobs;
 }

@@ -1,5 +1,6 @@
 package com.re.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.re.model.entity.enums.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,6 +39,7 @@ public class Application {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false)
+    @JsonIgnoreProperties({"applications"})
     private Job job;
 
     @ManyToOne(fetch = FetchType.LAZY)
