@@ -31,7 +31,10 @@ public class Application {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private ApplicationStatus status ;
+    private ApplicationStatus status;
+
+    @Column(name = "feedback")
+    private String feedback;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false)

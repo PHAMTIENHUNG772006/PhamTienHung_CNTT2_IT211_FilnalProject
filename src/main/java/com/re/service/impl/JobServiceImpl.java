@@ -10,11 +10,14 @@ import com.re.model.entity.enums.JobStatus;
 import com.re.repository.CompanyRepository;
 import com.re.repository.JobRepository;
 import com.re.repository.UserRepository;
+import com.re.security.princical.CustomUserDetails;
 import com.re.service.JobService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +27,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class JobServiceImpl implements JobService {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
@@ -64,7 +68,7 @@ public class JobServiceImpl implements JobService {
                 .title(jobRequest.getTitle())
                 .description(jobRequest.getDescription())
                 .salaryRange(jobRequest.getSalaryRange())
-                .status(JobStatus.DRAFT)
+                .status(JobStatus.PENDING_APPROVAL)
                 .company(company)
                 .applications(new ArrayList<>())
                 .build();
@@ -75,6 +79,7 @@ public class JobServiceImpl implements JobService {
     @Override
     @Transactional
     public Job updateStatus(Long id, JobStatus newStatus) {
+        log.info("Update status job {}", id);
 
         Job job = getJobById(id);
         JobStatus currentStatus = job.getStatus();
@@ -91,12 +96,6 @@ public class JobServiceImpl implements JobService {
 
         // Điều kiện 3: Kiểm tra tính hợp lệ của luồng di chuyển trạng thái (State Workflow)
         switch (currentStatus) {
-            case DRAFT:
-
-                if (newStatus != JobStatus.PENDING_APPROVAL) {
-                    throw new ConflictException("Hành động không hợp lệ! Bài viết nháp chỉ có thể chuyển sang chờ phê duyệt.");
-                }
-                break;
 
             case PENDING_APPROVAL:
                 if (newStatus != JobStatus.APPROVED && newStatus != JobStatus.REJECTED) {
@@ -111,14 +110,49 @@ public class JobServiceImpl implements JobService {
                 break;
 
             case REJECTED:
-                if (newStatus != JobStatus.DRAFT) {
-                    throw new ConflictException("Hành động không hợp lệ! Bài đăng bị từ chối phải quay về bản nháp để chỉnh sửa.");
+                if (newStatus != JobStatus.PENDING_APPROVAL) {
+                    throw new ConflictException("Hành động không hợp lệ! Bài đăng bị từ chối .");
                 }
                 break;
         }
 
 
         job.setStatus(newStatus);
+
+        return jobRepository.save(job);
+    }
+
+    @Override
+    @Transactional
+    public Job closeJob(Long jobId) {
+
+        CustomUserDetails principal =
+                (CustomUserDetails)
+                        SecurityContextHolder
+                                .getContext()
+                                .getAuthentication()
+                                .getPrincipal();
+
+        Long currentUserId = principal.getId();
+
+        Job job =
+                jobRepository.findJobForEmployer(
+                                jobId,
+                                currentUserId
+                        )
+                        .orElseThrow(() ->
+                                new AccessDeniedException(
+                                        "Bạn không có quyền đóng tin tuyển dụng này"
+                                )
+                        );
+
+        if (job.getStatus() == JobStatus.CLOSED) {
+            throw new ConflictException(
+                    "Tin tuyển dụng đã đóng trước đó"
+            );
+        }
+
+        job.setStatus(JobStatus.CLOSED);
 
         return jobRepository.save(job);
     }

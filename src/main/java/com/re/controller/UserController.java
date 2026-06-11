@@ -25,6 +25,7 @@ public class UserController {
     private final UserService userService;
     private final JobService  jobService;
 
+    // Lấy tất cả user theo
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<Page<UserResponse>>> getUser(

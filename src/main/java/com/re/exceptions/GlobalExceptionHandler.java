@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
@@ -66,7 +67,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({DisabledException.class, LockedException.class})
     public ResponseEntity<?> handleAccountDisabledException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN) // Trả về mã 403 chuẩn bảo mật
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of(
                         "status", HttpStatus.FORBIDDEN.value(),
                         "error", "ACCOUNT_DISABLED",
@@ -107,6 +108,22 @@ public class GlobalExceptionHandler {
                                 401,
                                 "UNAUTHORIZED",
                                 "Tên đăng nhập hoặc mật khẩu không chính xác",
+                                request
+                        )
+                );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> accessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request
+    ){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(
+                        buildError(
+                                403,
+                                "FORBIDDEN",
+                                ex.getMessage(),
                                 request
                         )
                 );

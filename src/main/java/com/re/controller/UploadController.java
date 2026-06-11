@@ -1,7 +1,6 @@
 package com.re.controller;
 
 import com.re.model.dto.application.ApplicationRequest;
-import com.re.model.dto.response.ApiDataResponse;
 import com.re.model.entity.Application;
 import com.re.security.princical.CustomUserDetails;
 import com.re.service.ApplicationService;
@@ -13,9 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/files")
@@ -33,7 +29,7 @@ public class UploadController {
     @PostMapping("/apply-with-file/{jobId}")
     public ResponseEntity<?> applyJobWithFile(
             @PathVariable Long jobId,
-            @Valid @ModelAttribute ApplicationRequest request) { // Dùng @ModelAttribute thay vì @RequestBody
+            @Valid @ModelAttribute ApplicationRequest request) {
 
         // Kiểm tra đăng nhập
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -47,7 +43,7 @@ public class UploadController {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             Long candidateId = userDetails.getId();
 
-            // Gọi Service thực hiện combo: Upload file -> Lưu DB
+
             Application result = applicationService.submitApplicationWithFile(jobId, candidateId, request);
 
             return ResponseEntity.status(HttpStatus.CREATED)

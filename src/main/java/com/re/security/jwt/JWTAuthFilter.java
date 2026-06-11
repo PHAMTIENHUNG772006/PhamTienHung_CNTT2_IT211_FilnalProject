@@ -1,6 +1,6 @@
 package com.re.security.jwt;
 
-import com.re.repository.TokenBlacklistRepository;
+import com.re.service.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +23,7 @@ import java.io.IOException;
 public class JWTAuthFilter extends OncePerRequestFilter {
     private final JWTProvider jwtProvider;
     private final UserDetailsService userDetailsService;
-    private final TokenBlacklistRepository tokenBlacklistRepository;
+    private final RedisService redisService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -41,7 +41,7 @@ public class JWTAuthFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         // Kiểm tra danh sách đen logout
-        if (tokenBlacklistRepository.existsByTokenString(jwt)) {
+        if (redisService.isTokenBlacklisted(jwt)) {
             log.warn("Token này đã bị hủy kích hoạt do người dùng đăng xuất!");
 
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -55,17 +55,16 @@ public class JWTAuthFilter extends OncePerRequestFilter {
             username = jwtProvider.extractUsername(jwt);
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                // 🛠️ SỬA TẠI ĐÂY: Lấy UserDetails đầy đủ quyền từ CustomUserDetailService bạn đã viết
+
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 // Kiểm tra tính hợp lệ của Token dựa trên UserDetails chuẩn
                 if (jwtProvider.isTokenValid(jwt, userDetails.getUsername())) {
 
-                    // 🛠️ SỬA TẠI ĐÂY: Nạp userDetails và danh sách quyền THẬT (userDetails.getAuthorities())
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
-                            userDetails.getAuthorities() // <--- Truyền quyền chuẩn vào đây, XÓA rỗng đi
+                            userDetails.getAuthorities()
                     );
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

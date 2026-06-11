@@ -20,5 +20,7 @@ public interface JobService {
 
     Job updateStatus(Long id, JobStatus jobStatus);
 
+    Job closeJob(Long id);
+
     Page<Job> getAllJobs(Pageable pageable);
 }

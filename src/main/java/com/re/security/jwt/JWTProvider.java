@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Date;
 
 @Component
@@ -130,10 +131,6 @@ public class JWTProvider {
         return getClaims(token).getExpiration();
     }
 
-    // =========================================================================
-    // ĐOẠN ĐÃ ĐỒNG BỘ VÀ SỬA LỖI GẠCH ĐỎ CHO CÁC PHƯƠNG THỨC MỚI THÊM
-    // =========================================================================
-
     /**
      * Kiểm tra ngày hết hạn (Dùng nội bộ)
      */
@@ -148,7 +145,10 @@ public class JWTProvider {
         try {
             return getUsernameFromToken(token);
         } catch (Exception e) {
+            log.info("Tài khoản của bạn không có quyền");
             log.error("Không thể trích xuất username từ token: {}", e.getMessage());
+            log.debug("Token: {}", token);
+            log.debug("Exception: {}", e.getMessage());
             return null;
         }
     }
@@ -158,15 +158,27 @@ public class JWTProvider {
      */
     public boolean isTokenValid(String token, String username) {
         try {
-            // Bước 1: Gọi hàm có sẵn cấu hình để check tính hợp lệ, chữ ký, định dạng cấu trúc
+
             validateToken(token);
 
-            // Bước 2: Bóc username ra để so khớp
             final String extractedUsername = extractUsername(token);
             return (extractedUsername != null && extractedUsername.equals(username) && !isTokenExpired(token));
         } catch (Exception e) {
             log.error("Mã Token không hợp lệ hoặc đã hết hạn: {}", e.getMessage());
             return false;
         }
+    }
+
+    public Date getExpirationDateFromToken(String token) {
+        SecretKey key = Keys.hmacShaKeyFor(this.jwtSecret.getBytes(StandardCharsets.UTF_8));
+
+
+        Claims claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.getExpiration();
     }
 }

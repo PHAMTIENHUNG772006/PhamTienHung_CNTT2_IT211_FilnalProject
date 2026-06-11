@@ -1,11 +1,7 @@
 package com.re.controller;
 
+import com.re.model.dto.auth.*;
 import com.re.model.dto.response.ApiDataResponse;
-import com.re.model.dto.auth.AuthResponse;
-import com.re.model.dto.auth.UserResponse;
-import com.re.model.dto.auth.LoginRequest;
-import com.re.model.dto.auth.RefreshTokenRequest;
-import com.re.model.dto.auth.RegisterRequest;
 import com.re.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -16,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import static tools.jackson.databind.type.LogicalType.Map;
 
 
 @RestController
@@ -94,15 +92,45 @@ public class AuthController {
                     .body("Bạn chưa đăng nhập hoặc phiên làm việc không hợp lệ");
         }
 
-
-        String accessToken = request.getHeader(HttpHeaders.AUTHORIZATION);
-
-
-        String email = authentication.getName();
-
-
-        authService.logout(accessToken, email);
+        authService.logout(request);
 
         return ResponseEntity.ok("Đăng xuất thành công, toàn bộ Tokens đã bị hủy kích hoạt.");
     }
+
+    /**
+     * API Yêu cầu quên mật khẩu - Trả thẳng mã OTP ra ngoài
+     * URL: POST http://localhost:8080/api/v1/auth/forgot-password
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        try {
+
+            String otp = authService.forgotPassword(email);
+            return ResponseEntity.ok(otp);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * API Xác nhận mã OTP để lấy lại mật khẩu mới
+     * URL: POST http://localhost:8080/api/v1/auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request);
+            return ResponseEntity.ok("Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
+
+
+
+
+
+
 }

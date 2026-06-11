@@ -28,7 +28,7 @@ public class Job {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private JobStatus status = JobStatus.DRAFT;
+    private JobStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)

@@ -69,19 +69,18 @@ public class UserServiceImpl implements UserService {
             throw new ConflictException("Email đã tồn tại");
         }
 
-        //  2. VALIDATE RIÊNG CHO EMPLOYER: Bắt buộc nhập tên công ty
         if (request.getRegisterType() == RegisterType.EMPLOYER) {
             if (request.getCompanyName() == null || request.getCompanyName().trim().isEmpty()) {
                 throw new NoCompanyNameException("Tài khoản nhà tuyển dụng bắt buộc phải nhập tên công ty!");
             }
         }
 
-        // 3. Tìm kiếm quyền cấu hình hệ thống
+
         Role role = roleRepository
                 .findByRoleName(request.getRegisterType() == RegisterType.EMPLOYER ? "ROLE_EMPLOYER" : "ROLE_CANDIDATE")
                 .orElseThrow(() -> new RuntimeException("Vai trò không tồn tại trên hệ thống"));
 
-        // 4. Khởi tạo đối tượng User
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
@@ -94,7 +93,7 @@ public class UserServiceImpl implements UserService {
 
         user = userRepository.save(user);
 
-        // 5. NẾU LÀ EMPLOYER: Tiến hành khởi tạo và lưu luôn thực thể Company mẫu
+
         if (request.getRegisterType() == RegisterType.EMPLOYER) {
 
             Company newCompany = Company.builder()

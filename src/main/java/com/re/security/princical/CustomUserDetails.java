@@ -44,7 +44,12 @@ public class CustomUserDetails implements UserDetails {
      */
     @Override
     public boolean isAccountNonExpired() {
-        return !this.isActive;
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
     }
 
     /**
@@ -60,6 +65,6 @@ public class CustomUserDetails implements UserDetails {
      */
     @Override
     public boolean isEnabled() {
-        return !this.isActive;
+        return Boolean.TRUE.equals(isActive);
     }
 }

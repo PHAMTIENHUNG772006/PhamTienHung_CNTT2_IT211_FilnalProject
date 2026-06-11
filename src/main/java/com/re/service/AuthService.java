@@ -1,10 +1,7 @@
 package com.re.service;
 
-import com.re.model.dto.auth.AuthResponse;
-import com.re.model.dto.auth.UserResponse;
-import com.re.model.dto.auth.LoginRequest;
-import com.re.model.dto.auth.RefreshTokenRequest;
-import com.re.model.dto.auth.RegisterRequest;
+import com.re.model.dto.auth.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 public interface AuthService {
 
@@ -16,5 +13,9 @@ public interface AuthService {
 
     AuthResponse refreshToken(RefreshTokenRequest request);
 
-    void logout(String accessToken, String email);
+    void logout(HttpServletRequest request);
+
+    String forgotPassword(String email);
+
+    void resetPassword(ResetPasswordRequest request);
 }

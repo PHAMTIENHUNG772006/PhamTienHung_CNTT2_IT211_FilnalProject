@@ -9,8 +9,10 @@ import com.re.service.JobService;
 import com.re.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -21,12 +23,16 @@ public class AdminController {
     private final JobService jobService;
     private final UserService userService;
 
-    @PutMapping("/{id}/status")
+
+    @PutMapping("/jobs/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<Job>> updateJobStatus(
             @PathVariable Long id,
             @RequestParam JobStatus status) {
 
         Job updatedJob = jobService.updateStatus(id, status);
+
+
 
         return new ResponseEntity<>(new ApiDataResponse<>(
                 true,
@@ -37,7 +43,8 @@ public class AdminController {
         ),HttpStatus.OK);
     }
 
-    @PutMapping("/{id}/lockUser")
+    @PutMapping("/users/{id}/lockUser")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<UserResponse>> updateJobLock(@PathVariable("id") Long userId){
 
         UserResponse lockUser = userService.lockUserAccount(userId);
