@@ -52,7 +52,6 @@ public class CandidateController {
     }
 
 
-
     /**
      * API Nộp đơn kết hợp: Nhận cả chữ và file cùng một lúc
      * URL: POST http://localhost:8080/api/v1/applications/apply-with-file/{jobId}

@@ -50,6 +50,17 @@ dependencies {
     // Thư viện lưu BlackList Token
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // Thư viện sử lý test
+    // ==================== UNIT TESTING (CHUẨN HOÀN CHỈNH) ====================
+    // Chỉ cần 2 dependency này là đủ cho TOÀN BỘ luồng test (Data, Web, Security, Mockito)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // Cấu hình Lombok cho môi trường Test
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
