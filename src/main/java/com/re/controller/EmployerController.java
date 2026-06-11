@@ -1,5 +1,6 @@
 package com.re.controller;
 
+import com.re.model.dto.application.ApplicationResponse;
 import com.re.model.dto.jobs.JobRequest;
 import com.re.model.dto.response.ApiDataResponse;
 import com.re.model.entity.Application;
@@ -97,19 +98,23 @@ public class EmployerController {
     }
 
     @PutMapping("/applications/{id}/status")
-    public ResponseEntity<ApiDataResponse<Application>> updateJobStatus(
+    public ResponseEntity<ApiDataResponse<ApplicationResponse>> updateJobStatus(
             @PathVariable Long id,
-            @RequestParam ApplicationStatus status) {
+            @RequestParam ApplicationStatus status,
+            @RequestParam(required = false) String message
+    ) {
 
-        Application application = applicationService.updateStatus(id, status);
+        ApplicationResponse application =
+                applicationService.updateStatus(id, status,message);
 
-        ApiDataResponse<Application> response = new ApiDataResponse<>(
-                true,
-                "Cập nhật trạng thái dự án thành công!",
-                application,
-                null,
-                HttpStatus.OK
-        );
+        ApiDataResponse<ApplicationResponse> response =
+                new ApiDataResponse<>(
+                        true,
+                        "Cập nhật trạng thái hồ sơ thành công!",
+                        application,
+                        null,
+                        HttpStatus.OK
+                );
 
         return ResponseEntity.ok(response);
     }
