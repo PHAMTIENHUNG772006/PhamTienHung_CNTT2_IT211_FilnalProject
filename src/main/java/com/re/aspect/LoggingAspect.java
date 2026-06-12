@@ -1,7 +1,9 @@
 package com.re.aspect;
 
+import com.re.model.entity.Application;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
@@ -46,6 +48,20 @@ public class LoggingAspect {
         log.info(" Hoàn thành: {}.{}() - Thời gian thực hiện: {} ms", className, methodName, timeTaken);
 
         return result;
+    }
+
+    @AfterReturning(
+            pointcut =
+                    "execution(* com.re.service.impl.ApplicationServiceImpl.submitApplicationWithFile(..))",
+            returning = "application"
+    )
+    public void logApplySuccess(Application application) {
+
+        log.info(
+                "[APPLY JOB] Candidate {} đã ứng tuyển Job {}",
+                application.getCandidate().getId(),
+                application.getJob().getId()
+        );
     }
 
 }
