@@ -7,6 +7,7 @@ import com.re.exceptions.ConflictException;
 import com.re.model.dto.application.ApplicationRequest;
 import com.re.model.dto.application.ApplicationResponse;
 import com.re.model.entity.Application;
+import com.re.model.entity.Company;
 import com.re.model.entity.Job;
 import com.re.model.entity.User;
 import com.re.model.entity.enums.ApplicationStatus;
@@ -22,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -107,16 +110,16 @@ public class ApplicationServiceImpl implements ApplicationService {
                 );
 
         // Kiểm tra chủ sở hữu job
-        Long ownerId = application.getJob()
-                .getCompany()
-                .getOwner()
-                .getId();
-
-        if (!ownerId.equals(currentUserId)) {
-            throw new ForbiddenException(
-                    "Bạn không có quyền cập nhật trạng thái hồ sơ này"
-            );
-        }
+        Long ownerId = Optional.ofNullable(application)
+                .map(Application::getJob)
+                .map(Job::getCompany)
+                .map(Company::getOwner)
+                .map(User::getId)
+                .orElseThrow(() ->
+                        new ConflictException(
+                                "Không xác định được chủ sở hữu Job"
+                        )
+                );
 
         ApplicationStatus currentStatus = application.getStatus();
 
