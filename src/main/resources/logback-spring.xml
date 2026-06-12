@@ -2,7 +2,7 @@
 <configuration>
 
     <property name="LOG_DIR" value="./logs" />
-    <property name="LOG_FILE_NAME" value="smart-academic-platform" />
+    <property name="LOG_FILE_NAME" value="hr_manager" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>

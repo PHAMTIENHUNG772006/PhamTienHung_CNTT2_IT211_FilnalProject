@@ -34,7 +34,7 @@ public class CandidateController {
 
     @GetMapping("/jobs")
     public ResponseEntity<ApiDataResponse<Page<Job>>> getAllJobs(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC)
+            @PageableDefault(page = 0, size = 2, sort = "id", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
 

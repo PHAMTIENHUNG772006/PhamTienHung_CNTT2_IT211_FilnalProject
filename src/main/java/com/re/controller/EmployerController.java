@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,11 +34,9 @@ public class EmployerController {
 
     @GetMapping("/jobs")
     public ResponseEntity<ApiDataResponse<Page<Job>>> getAllJobs(
-            @RequestParam(name = "page", defaultValue = "1") Integer page,
-            @RequestParam(name = "size", defaultValue = "10") Integer size
+            @PageableDefault(page = 0, size = 2, sort = "id", direction = Sort.Direction.DESC)
+            Pageable pageable
     ) {
-
-        Pageable pageable = PageRequest.of(page - 1, size);
 
         CustomUserDetails userDetails =
                 (CustomUserDetails) SecurityContextHolder.getContext()

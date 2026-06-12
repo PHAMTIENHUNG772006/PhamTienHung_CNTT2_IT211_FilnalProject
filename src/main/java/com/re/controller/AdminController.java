@@ -50,7 +50,7 @@ public class AdminController {
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<Page<UserResponse>>> getUser(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC)
+            @PageableDefault(page = 0, size = 2, sort = "id", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
 
@@ -61,7 +61,7 @@ public class AdminController {
         );
     }
 
-    @PutMapping("/users/{id}/lockUser")
+    @PutMapping("/users/{id}/lock")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiDataResponse<UserResponse>> updateJobLock(@PathVariable("id") Long userId){
 

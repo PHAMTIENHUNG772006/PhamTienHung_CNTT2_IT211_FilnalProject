@@ -31,7 +31,6 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final CloudinaryService cloudinaryService;
     private final UserRepository userRepository;
     private final JobRepository jobRepository;
-    private final CompanyRepository companyRepository;
 
     @Override
     @Transactional
@@ -64,7 +63,6 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (fileName == null || !fileName.toLowerCase().endsWith(".pdf")) {
             throw new BadRequestException("Chỉ cho phép upload file PDF");
         }
-
 
 
         // 5. Đẩy file lên Cloudinary lấy chuỗi URL bảo mật
