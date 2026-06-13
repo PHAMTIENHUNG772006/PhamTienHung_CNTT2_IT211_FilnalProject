@@ -39,42 +39,62 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Transactional
     public Application submitApplicationWithFile(Long jobId, Long candidateId, ApplicationRequest request) {
 
-        // 1. Kiểm tra sự tồn tại của tin tuyển dụng (404 Not Found)
+        // =========================================================================
+        // PHẦN 1: KIỂM TRA TỒN TẠI & RÀO CHẮN LOGIC (VALIDATION & SECURITY)
+        // =========================================================================
+
+        // Kiểm tra sự tồn tại của tin tuyển dụng
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tin tuyển dụng với ID: " + jobId));
 
-        // 2. Kiểm tra sự tồn tại của ứng viên (404 Not Found)
+        // Kiểm tra sự tồn tại của ứng viên
         User candidate = userRepository.findById(candidateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại với ID: " + candidateId));
 
-        // 3. Kiểm tra xem ứng viên đã nộp hồ sơ vào vị trí này chưa (409 Conflict)
+
         if (applicationRepository.existsByJobIdAndCandidateId(jobId, candidateId)) {
             throw new ConflictException("Bạn đã nộp hồ sơ vào vị trí này rồi!");
         }
 
-        // 4. Kiểm tra định dạng file truyền lên, tránh NullPointerException (400 Bad Request)
-        if (request.getCvUrl() == null || request.getCvUrl().isEmpty() || !"application/pdf".equals(request.getCvUrl().getContentType())) {
-            throw new BadRequestException("Vui lòng chỉ tải lên tập tin định dạng PDF!");
+
+        // =========================================================================
+        // PHẦN 2: XỬ LÝ QUYẾT ĐỊNH URL CV (CV LOGIC RESOLUTION)
+        // =========================================================================
+
+        String finalCvUrl = null;
+        String userSavedCvUrl = candidate.getCvUrl();
+
+        if (userSavedCvUrl != null && !userSavedCvUrl.trim().isEmpty()) {
+            // Trường hợp 1: Tài khoản ĐÃ CÓ SẴN CV
+            if (request.getCvUrl() != null && !request.getCvUrl().isEmpty()) {
+                validatePdfFile(request.getCvUrl());
+                finalCvUrl = cloudinaryService.uploadPdf(request.getCvUrl());
+            } else {
+
+                finalCvUrl = userSavedCvUrl;
+            }
+        } else {
+
+            if (request.getCvUrl() == null || request.getCvUrl().isEmpty()) {
+                throw new BadRequestException("Tài khoản của bạn chưa có CV sẵn, vui lòng tải lên file CV mới!");
+            }
+
+            validatePdfFile(request.getCvUrl());
+            finalCvUrl = cloudinaryService.uploadPdf(request.getCvUrl());
+
+            // TỰ ĐỘNG TỐI ƯU UX: Tiện tay cập nhật luôn CV mới này vào hồ sơ cá nhân để lần sau không cần chọn lại file
+            candidate.setCvUrl(finalCvUrl);
+            userRepository.save(candidate);
         }
 
-        MultipartFile file = request.getCvUrl();
 
-        String fileName = file.getOriginalFilename();
+        // =========================================================================
+        // PHẦN 3: TẠO BẢN GHI ĐƠN ỨNG TUYỂN VÀ LƯU TRỮ (PERSISTENCE)
+        // =========================================================================
 
-        System.out.println("File name: " + fileName);
-
-        if (fileName == null || !fileName.toLowerCase().endsWith(".pdf")) {
-            throw new BadRequestException("Chỉ cho phép upload file PDF");
-        }
-
-
-        // 5. Đẩy file lên Cloudinary lấy chuỗi URL bảo mật
-        String uploadedCvUrl = cloudinaryService.uploadPdf(request.getCvUrl());
-
-        // 6. Xây dựng đối tượng Application bằng Builder Pattern
         Application application = Application.builder()
                 .coverLetter(request.getCoverLetter())
-                .cvUrl(uploadedCvUrl)
+                .cvUrl(finalCvUrl)
                 .status(ApplicationStatus.PENDING)
                 .job(job)
                 .feedback(null)
@@ -82,6 +102,20 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .build();
 
         return applicationRepository.save(application);
+    }
+
+    /**
+     * Hàm kiểm tra cấu trúc/định dạng của file PDF đầu vào
+     */
+    private void validatePdfFile(MultipartFile file) {
+        if (!"application/pdf".equals(file.getContentType())) {
+            throw new BadRequestException("Vui lòng chỉ tải lên tập tin định dạng PDF!");
+        }
+
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase().endsWith(".pdf")) {
+            throw new BadRequestException("Tên file không hợp lệ hoặc không phải đuôi .pdf");
+        }
     }
 
     @Override

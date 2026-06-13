@@ -72,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .isActive(true)
+                .cvUrl(null)
                 .role(role)
                 .build();
 

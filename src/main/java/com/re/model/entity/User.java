@@ -34,6 +34,9 @@ public class User {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "cv_url", nullable = false, length = 500)
+    private String cvUrl;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;

@@ -19,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CloudinaryServiceImpl cloudinaryService;
 
     @Override
     public Page<UserResponse> getAllUser(Pageable pageable) {
@@ -89,7 +92,7 @@ public class UserServiceImpl implements UserService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .isActive(true) // 💡 Tinh chỉnh: Cho phép tài khoản vừa tạo ở trạng thái active để có thể login ngay (trừ khi hệ thống của bạn có luồng kích hoạt mail riêng)
+                .isActive(true)
                 .role(role)
                 .build();
 
@@ -105,7 +108,29 @@ public class UserServiceImpl implements UserService {
             companyRepository.save(newCompany);
         }
 
-        return mapping(user); // 💡 Tối ưu: Sử dụng lại hàm mapping(user) có sẵn bên dưới thay vì viết lặp code Builder ở đây
+        return mapping(user);
+    }
+
+    @Override
+    @Transactional
+    public void uploadCv(Long userId, MultipartFile cvFile) {
+        // 1. Kiểm tra tài khoản ứng viên có tồn tại không
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy tài khoản"));
+
+        // 2. Kiểm tra file đầu vào
+        if (cvFile == null || cvFile.isEmpty()) {
+            throw new BadRequestException("File CV không được để trống!");
+        }
+
+        // 3. Gọi hàm uploadPdf bạn vừa viết để lấy secure_url
+        // Vì bên trong uploadPdf đã tự catch IOException và ném ra RuntimeException rồi,
+        // nên ở đây bạn không cần dùng try-catch nữa, code sẽ rất sạch sẽ!
+        String uploadedUrl = cloudinaryService.uploadPdf(cvFile);
+
+        // 4. Lưu URL vào DB
+        user.setCvUrl(uploadedUrl);
+        userRepository.save(user);
     }
 
     // Hàm chuyển đổi từ Entity sang DTO
