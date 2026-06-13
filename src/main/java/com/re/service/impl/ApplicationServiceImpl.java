@@ -159,7 +159,6 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         // Không thay đổi trạng thái
         if (currentStatus == newStatus) {
-            application.setFeedback(feedback);
             return mapToResponse(application);
         }
 
@@ -222,6 +221,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         // Cập nhật trạng thái
         application.setStatus(newStatus);
+        application.setFeedback(feedback);
 
         Application saved = applicationRepository.save(application);
 
